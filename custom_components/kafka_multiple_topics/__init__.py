@@ -25,7 +25,7 @@ from homeassistant.helpers.event import EventStateChangedData
 from homeassistant.helpers.typing import ConfigType, EventType
 from homeassistant.util import ssl as ssl_util
 
-DOMAIN = "apache_kafka"
+DOMAIN = "apache_kafka_multiple_topics"
 
 CONF_FILTER = "filter"
 CONF_TOPICS = "topics"
