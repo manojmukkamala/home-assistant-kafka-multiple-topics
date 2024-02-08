@@ -9,7 +9,7 @@ All credits to the original creator, whoever you are, thanks a lot!
 
 in your configuration.yml:
 ```
-apache_kafka:
+apache_kafka_multiple_topics:
   ip_address: kafka-broker-service
   port: 9092
   topics: 
@@ -23,7 +23,7 @@ apache_kafka:
 __Note:__ Set a filter at the root level to apply it to all topics.
 
 ```
-apache_kafka:
+apache_kafka_multiple_topics:
   ip_address: kafka-broker-service
   port: 9092
   topics: 
