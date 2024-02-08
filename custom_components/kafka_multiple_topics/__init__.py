@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import datetime
 import json
-from typing import Any, Literal
+from typing import Any, Dict, List, Literal
 
 from aiokafka import AIOKafkaProducer
 import voluptuous as vol
@@ -28,8 +28,16 @@ from homeassistant.util import ssl as ssl_util
 DOMAIN = "apache_kafka"
 
 CONF_FILTER = "filter"
-CONF_TOPIC = "topic"
+CONF_TOPICS = "topics"
 CONF_SECURITY_PROTOCOL = "security_protocol"
+
+
+TOPIC_SCHEMA = vol.Schema(
+    {
+        vol.Required("topic"): cv.string,
+        vol.Optional(CONF_FILTER, default={}): FILTER_SCHEMA,
+    }
+)
 
 CONFIG_SCHEMA = vol.Schema(
     {
@@ -37,7 +45,7 @@ CONFIG_SCHEMA = vol.Schema(
             {
                 vol.Required(CONF_IP_ADDRESS): cv.string,
                 vol.Required(CONF_PORT): cv.port,
-                vol.Required(CONF_TOPIC): cv.string,
+                vol.Required(CONF_TOPICS): vol.All(cv.ensure_list, [TOPIC_SCHEMA]),
                 vol.Optional(CONF_FILTER, default={}): FILTER_SCHEMA,
                 vol.Optional(CONF_SECURITY_PROTOCOL, default="PLAINTEXT"): vol.In(
                     ["PLAINTEXT", "SASL_SSL"]
@@ -59,7 +67,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         hass,
         conf[CONF_IP_ADDRESS],
         conf[CONF_PORT],
-        conf[CONF_TOPIC],
+        conf[CONF_TOPICS],
         conf[CONF_FILTER],
         conf[CONF_SECURITY_PROTOCOL],
         conf.get(CONF_USERNAME),
@@ -94,7 +102,7 @@ class KafkaManager:
         hass: HomeAssistant,
         ip_address: str,
         port: int,
-        topic: str,
+        topics: List[Dict[str, Any]],
         entities_filter: EntityFilter,
         security_protocol: Literal["PLAINTEXT", "SASL_SSL"],
         username: str | None,
@@ -114,15 +122,16 @@ class KafkaManager:
             sasl_plain_username=username,
             sasl_plain_password=password,
         )
-        self._topic = topic
+        self._topics = topics
 
-    def _encode_event(self, event: EventType[EventStateChangedData]) -> bytes | None:
+    def _encode_event(self, event: EventType[EventStateChangedData], topic_entities_filter: EntityFilter) -> bytes | None:
         """Translate events into a binary JSON payload."""
         state = event.data["new_state"]
         if (
             state is None
             or state.state in (STATE_UNKNOWN, "", STATE_UNAVAILABLE)
             or not self._entities_filter(state.entity_id)
+            or not topic_entities_filter(state.entity_id)
         ):
             return None
 
@@ -141,7 +150,10 @@ class KafkaManager:
 
     async def write(self, event: EventType[EventStateChangedData]) -> None:
         """Write a binary payload to Kafka."""
-        payload = self._encode_event(event)
+        for topic_and_filters in self._topics:
+            topic = topic_and_filters['topic']
+            topic_entities_filter = topic_and_filters['filter']
+            payload = self._encode_event(event, topic_entities_filter)
 
-        if payload:
-            await self._producer.send_and_wait(self._topic, payload)
+            if payload:
+                await self._producer.send_and_wait(topic, payload)

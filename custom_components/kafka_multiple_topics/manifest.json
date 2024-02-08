@@ -1,5 +1,5 @@
 {
-  "domain": "apache_kafka",
+  "domain": "apache_kafka_multiple_topics",
   "name": "Apache Kafka Multiple Topics",
   "codeowners": ["@manojmukkamala"],
   "documentation": "https://www.home-assistant.io/integrations/apache_kafka_multiple_topics",
