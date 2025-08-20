@@ -131,20 +131,18 @@ class KafkaManager:
             or not topic_entities_filter(state.entity_id)
         ):
             return None
-        
+
         # Attempt to parse state.state as JSON
         try:
             parsed_state = json.loads(state.state)
         except (json.JSONDecodeError, TypeError):
-            parsed_state = state.state  # leave as-is if not JSON  
+            parsed_state = state.state  # leave as-is if not JSON
 
-        # Replace state in the dict with parsed object
-        state_dict = state.as_dict()
-        state_dict["state"] = parsed_state                  
+        # Make a mutable copy of the state dict
+        state_dict = dict(state.as_dict())
+        state_dict["state"] = parsed_state
 
-        return json.dumps(obj=state_dict, default=self._encoder.encode).encode(
-            "utf-8"
-        )
+        return json.dumps(obj=state_dict, default=self._encoder.encode).encode("utf-8")
 
     async def start(self) -> None:
         """Start the Kafka manager."""
